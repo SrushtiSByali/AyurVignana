@@ -1,37 +1,43 @@
-"""
-Utility functions for image processing
-"""
 import cv2
 import numpy as np
-from tensorflow.keras.preprocessing.image import img_to_array
+import tensorflow as tf
 from config import Config
 
 def preprocess_image(image_path):
     """
-    Preprocess an image for model prediction
+    Preprocess image for prediction using the correct dimensions and format
+    based on the model diagnostic results.
     
     Args:
-        image_path: Path to the image file
+        image_path (str): Path to the image file
         
     Returns:
-        numpy.ndarray: Preprocessed image as a numpy array ready for model prediction
+        numpy.ndarray: Preprocessed image ready for model prediction
     """
-    # Read the image
+    # Load image
     img = cv2.imread(image_path)
     if img is None:
         raise ValueError(f"Could not read image at {image_path}")
     
-    # Convert to RGB (OpenCV uses BGR by default)
+    # Model expects 128x128 RGB images
+    img = cv2.resize(img, (128, 128))  # Resize to correct dimensions
+    
+    # Convert BGR to RGB (since model was likely trained on RGB)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     
-    # Resize to the expected input size
-    img = cv2.resize(img, Config.IMG_SIZE)
+    # Apply CLAHE for contrast enhancement if needed (optional)
+    # lab = cv2.cvtColor(img, cv2.COLOR_RGB2LAB)
+    # l, a, b = cv2.split(lab)
+    # clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+    # l = clahe.apply(l)
+    # img = cv2.merge((l, a, b))
+    # img = cv2.cvtColor(img, cv2.COLOR_LAB2RGB)
     
-    # Convert to array and normalize
-    img_array = img_to_array(img)
-    img_array = img_array / 255.0  # Normalize to [0,1]
+    # Scale pixel values to [0, 1]
+    img = img.astype(np.float32) / 255.0
     
-    # Expand dimensions to match model's expected input
-    img_array = np.expand_dims(img_array, axis=0)
+    # Add batch dimension
+    img = np.expand_dims(img, axis=0)
     
-    return img_array
+    print(f"Preprocessed image shape: {img.shape}")
+    return img
